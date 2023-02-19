@@ -1,27 +1,70 @@
 package com.hmdp.utils;
 
+import cn.hutool.core.util.StrUtil;
+import com.alibaba.fastjson.JSON;
 import com.hmdp.dto.UserDTO;
-import com.hmdp.entity.User;
+import io.netty.util.internal.StringUtil;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import java.util.concurrent.TimeUnit;
+
+import static com.hmdp.utils.RedisConstants.LOGIN_USER_TOKEN;
+import static com.hmdp.utils.RedisConstants.TOKEN_USER_TTL;
+
 //登录拦截器
 
 public class LoginInterceptor implements HandlerInterceptor {
 
+
+    //
+    private StringRedisTemplate redisTemplate;
+
+    public LoginInterceptor(StringRedisTemplate redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        HttpSession session = request.getSession();
-        UserDTO user = (UserDTO) session.getAttribute("user");
-        if(user==null){
+        //fixme: session问题
+//        HttpSession session = request.getSession();
+//        UserDTO user = (UserDTO) session.getAttribute("user");
+//        if(user==null){
+//            response.setStatus(401);
+//            return  false;
+//        }
+
+        // Todo：redis+jwt优化
+        String token = request.getHeader("authorization");
+        String verifyToken = tokenUtils.verifyToken(token);
+        if(StrUtil.isBlank(verifyToken)){
+            response.setStatus(401);
+            return  false;
+        }
+        if(StrUtil.isBlank(token)){
             response.setStatus(401);
             return  false;
         }
 
-        UserHolder.saveUser(user);
+        String objStr = redisTemplate.opsForValue().get(LOGIN_USER_TOKEN + token);
+
+        if(StringUtil.isNullOrEmpty(objStr)){
+            response.setStatus(401);
+            return  false;
+        }
+        UserDTO userDTO = JSON.parseObject(objStr, UserDTO.class);
+
+        //存入thread-local
+        UserHolder.saveUser(userDTO);
+
+
+        //刷新 token有效时间
+        redisTemplate.expire(LOGIN_USER_TOKEN+token,TOKEN_USER_TTL, TimeUnit.MINUTES);
 
         return true;
     }
