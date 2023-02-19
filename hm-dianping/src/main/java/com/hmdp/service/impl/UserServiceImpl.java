@@ -2,16 +2,20 @@ package com.hmdp.service.impl;
 
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.hmdp.dto.LoginFormDTO;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.User;
 import com.hmdp.mapper.UserMapper;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.RegexPatterns;
 import com.hmdp.utils.RegexUtils;
+import com.hmdp.utils.SystemConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpSession;
+
+import static com.hmdp.utils.SystemConstants.USER_NICK_NAME_PREFIX;
 
 /**
  * <p>
@@ -46,5 +50,46 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         //返回成功状态吗
         return Result.ok();
+    }
+
+    @Override
+    public Result login(LoginFormDTO loginForm, HttpSession session) {
+        //1.验证手机号-正则表达式
+        if (RegexUtils.isPhoneInvalid(loginForm.getPhone())) {
+            //非法
+            return Result.fail("手机号格式错误!");
+        }
+
+        Object sessionCode = session.getAttribute("code");
+        String code = loginForm.getCode();
+
+        if (sessionCode==null||!sessionCode.toString().equals(code)) {
+            //非法
+            return Result.fail("验证码校验错误!");
+        }
+
+        String phone = loginForm.getPhone();
+
+        User user = query().eq("phone", phone).one();
+
+        if(user==null){
+            //创建默认用户
+            user = createUserByPhone(phone);
+        }
+
+        session.setAttribute("user",user);
+
+        return Result.ok();
+    }
+
+
+    //创建用户方法 入库方法
+    private User createUserByPhone(String phone) {
+        User user = new User();
+        user.setPhone(phone);
+        //user.setNickName("user_"+RandomUtil.randomString(10));
+        user.setNickName(USER_NICK_NAME_PREFIX+RandomUtil.randomString(10));
+        save(user);
+        return user;
     }
 }
