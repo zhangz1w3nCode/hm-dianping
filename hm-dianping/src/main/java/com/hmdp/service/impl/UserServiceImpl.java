@@ -54,8 +54,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public Result login(LoginFormDTO loginForm, HttpSession session) {
+
+        String phone = loginForm.getPhone();
         //1.验证手机号-正则表达式
-        if (RegexUtils.isPhoneInvalid(loginForm.getPhone())) {
+        if (RegexUtils.isPhoneInvalid(phone)) {
             //非法
             return Result.fail("手机号格式错误!");
         }
@@ -67,8 +69,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             //非法
             return Result.fail("验证码校验错误!");
         }
-
-        String phone = loginForm.getPhone();
 
         User user = query().eq("phone", phone).one();
 
