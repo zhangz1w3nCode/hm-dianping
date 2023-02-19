@@ -28,6 +28,7 @@ public class MvcConfig implements WebMvcConfigurer {
                 "/user/login"
         ).order(1);
 
+
         //刷新token的拦截器
         registry.addInterceptor(new refreshTokenInterceptor(redisTemplate)).addPathPatterns(
                 "/**"
