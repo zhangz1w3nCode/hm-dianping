@@ -22,55 +22,13 @@ import static com.hmdp.utils.RedisConstants.TOKEN_USER_TTL;
 public class LoginInterceptor implements HandlerInterceptor {
 
 
-    //
-    private StringRedisTemplate redisTemplate;
-
-    public LoginInterceptor(StringRedisTemplate redisTemplate) {
-        this.redisTemplate = redisTemplate;
-    }
-
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        //fixme: session问题
-//        HttpSession session = request.getSession();
-//        UserDTO user = (UserDTO) session.getAttribute("user");
-//        if(user==null){
-//            response.setStatus(401);
-//            return  false;
-//        }
-
-        // Todo：redis+jwt优化
-        String token = request.getHeader("authorization");
-        String verifyToken = tokenUtils.verifyToken(token);
-        if(StrUtil.isBlank(verifyToken)){
+        if(UserHolder.getUser()==null){
             response.setStatus(401);
-            return  false;
+            return false;
         }
-        if(StrUtil.isBlank(token)){
-            response.setStatus(401);
-            return  false;
-        }
-
-        String objStr = redisTemplate.opsForValue().get(LOGIN_USER_TOKEN + token);
-
-        if(StringUtil.isNullOrEmpty(objStr)){
-            response.setStatus(401);
-            return  false;
-        }
-        UserDTO userDTO = JSON.parseObject(objStr, UserDTO.class);
-
-        //存入thread-local
-        UserHolder.saveUser(userDTO);
-
-
-        //刷新 token有效时间
-        redisTemplate.expire(LOGIN_USER_TOKEN+token,TOKEN_USER_TTL, TimeUnit.MINUTES);
-
         return true;
     }
 
-    @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
-        UserHolder.removeUser();//移除用户 避免内存泄漏
-    }
 }
