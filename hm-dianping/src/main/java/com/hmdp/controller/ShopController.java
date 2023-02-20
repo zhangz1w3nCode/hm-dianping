@@ -11,14 +11,6 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 
-/**
- * <p>
- * 前端控制器
- * </p>
- *
- * @author 虎哥
- * @since 2021-12-22
- */
 @RestController
 @RequestMapping("/shop")
 public class ShopController {
@@ -27,13 +19,15 @@ public class ShopController {
     public IShopService shopService;
 
     /**
-     * 根据id查询商铺信息
+     * 查询商铺信息-根据id
      * @param id 商铺id
      * @return 商铺详情数据
      */
     @GetMapping("/{id}")
     public Result queryShopById(@PathVariable("id") Long id) {
-        return Result.ok(shopService.getById(id));
+
+        return Result.ok(shopService.queryById(id));
+
     }
 
     /**
@@ -57,8 +51,7 @@ public class ShopController {
     @PutMapping
     public Result updateShop(@RequestBody Shop shop) {
         // 写入数据库
-        shopService.updateById(shop);
-        return Result.ok();
+        return shopService.update(shop);
     }
 
     /**
