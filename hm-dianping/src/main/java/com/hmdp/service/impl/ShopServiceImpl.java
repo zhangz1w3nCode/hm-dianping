@@ -22,7 +22,6 @@ import static com.hmdp.utils.RedisConstants.*;
 @Service
 public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IShopService {
 
-
     @Autowired
     private StringRedisTemplate redisTemplate;
 
