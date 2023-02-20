@@ -112,6 +112,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
             if(!isLock){
                 // 没拿到锁 重试 -递归方法
                 Thread.sleep(50);
+
                 return cacheThrough(id);
             }
 
