@@ -9,11 +9,14 @@ import com.hmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.utils.UserHolder;
 import com.hmdp.utils.redisIdWorker;
+import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder> implements IVoucherOrderService {
@@ -24,8 +27,10 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     @Autowired
     private redisIdWorker redisIdWorker;
 
+
+
     @Override
-    @Transactional
+
     public Result seckillVoucher(Long voucherId) {
 
         SeckillVoucher voucher = seckillVoucherService.getById(voucherId);
@@ -43,7 +48,31 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
         Integer DbStock = voucher.getStock();
 
-        if(voucher.getStock()<1) return Result.fail("优惠券库存不足");
+        if (DbStock < 1) return Result.fail("优惠券库存不足");
+
+        Long userId = UserHolder.getUser().getId();
+
+
+        //一人一单 线程安全的做法
+        synchronized (userId.toString().intern()){
+            IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();;
+            return proxy.creatOrder(voucherId);
+        }
+
+    }
+
+    @Transactional
+    //一人一单 线程安全的做法
+    public Result creatOrder(Long voucherId) {
+        //一人一单
+        Long userId = UserHolder.getUser().getId();
+
+        Integer orderSum = query().eq("user_id", userId).eq("voucher_id", voucherId).count();
+
+        if(orderSum>0){
+            return Result.fail("购买失败！一人仅限制买一单！");
+        }
+
 
         boolean status = seckillVoucherService.update()
                 .setSql("stock=stock-1")
@@ -53,19 +82,21 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                 .gt("stock", 0)
                 .update();
 
-        if(!status) return Result.fail("更新失败！");
+        if (!status) return Result.fail("更新失败！");
+
 
         VoucherOrder voucherOrder = new VoucherOrder();
 
         long orderId = redisIdWorker.nextId("order");
         voucherOrder.setId(orderId);
 
-        Long userId = UserHolder.getUser().getId();
+
         voucherOrder.setUserId(userId);
 
         voucherOrder.setVoucherId(voucherId);
 
         save(voucherOrder);
+
 
         return Result.ok(orderId);
     }
