@@ -25,6 +25,11 @@ public class UserController {
     @Resource
     private IUserInfoService userInfoService;
 
+    @GetMapping("/test")
+    public String test(){
+        return "8082";
+    }
+
     /**
      * 发送手机验证码
      */
