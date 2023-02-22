@@ -65,7 +65,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     @Transactional
     //一人一单 线程安全的做法
     public Result creatOrder(Long voucherId) {
-        //一人一单
+
         Long userId = UserHolder.getUser().getId();
 
         Integer orderSum = query().eq("user_id", userId).eq("voucher_id", voucherId).count();
