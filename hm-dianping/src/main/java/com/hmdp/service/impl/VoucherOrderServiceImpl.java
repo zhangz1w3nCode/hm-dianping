@@ -55,7 +55,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
         Long userId = UserHolder.getUser().getId();
 
-
         //一人一单 线程安全的做法
         simpleRedisLock lock = new simpleRedisLock("voucherOrder:"+userId,redisTemplate);
 
