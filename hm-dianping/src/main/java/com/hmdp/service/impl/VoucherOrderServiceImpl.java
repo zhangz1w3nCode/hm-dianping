@@ -9,8 +9,10 @@ import com.hmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.utils.UserHolder;
 import com.hmdp.utils.redisIdWorker;
+import com.hmdp.utils.redisLock.simpleRedisLock;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +29,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     @Autowired
     private redisIdWorker redisIdWorker;
 
-
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
     @Override
 
@@ -54,10 +57,21 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
 
         //一人一单 线程安全的做法
-        synchronized (userId.toString().intern()){
+        simpleRedisLock lock = new simpleRedisLock("voucherOrder:"+userId,redisTemplate);
+
+        boolean isLock = lock.tryLock(1200);
+
+        if(!isLock){
+            return Result.fail("一人仅仅只能抢一单!");
+        }
+
+        try {
             IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();;
             return proxy.creatOrder(voucherId);
+        }finally {
+            lock.unLock();
         }
+
 
 
     }
