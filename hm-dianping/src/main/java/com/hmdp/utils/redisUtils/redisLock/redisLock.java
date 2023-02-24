@@ -1,4 +1,4 @@
-package com.hmdp.utils.redisLock;
+package com.hmdp.utils.redisUtils.redisLock;
 
 public interface redisLock {
 

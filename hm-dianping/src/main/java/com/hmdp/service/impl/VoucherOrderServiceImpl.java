@@ -2,14 +2,16 @@ package com.hmdp.service.impl;
 
 import com.hmdp.dto.Result;
 import com.hmdp.entity.SeckillVoucher;
-import com.hmdp.entity.Voucher;
 import com.hmdp.entity.VoucherOrder;
 import com.hmdp.mapper.VoucherOrderMapper;
 import com.hmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.utils.UserHolder;
 import com.hmdp.utils.redisIdWorker;
-import com.hmdp.utils.redisLock.simpleRedisLock;
+import com.hmdp.utils.redisUtils.redisLock.simpleRedisLock;
+import com.hmdp.utils.redisUtils.redisson.redissonConfig;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -17,8 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder> implements IVoucherOrderService {
@@ -31,6 +31,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     @Autowired
     private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private RedissonClient RedissonClient;
 
     @Override
 
@@ -56,9 +59,12 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         Long userId = UserHolder.getUser().getId();
 
         //一人一单 线程安全的做法
-        simpleRedisLock lock = new simpleRedisLock("voucherOrder:"+userId,redisTemplate);
+        //simpleRedisLock lock = new simpleRedisLock("voucherOrder:"+userId,redisTemplate);
 
-        boolean isLock = lock.tryLock(1200);
+        //使用redisson框架 实现分布式锁
+        RLock lock = RedissonClient.getLock("voucherOrder:" + userId);
+
+        boolean isLock = lock.tryLock();
 
          if(!isLock){
             return Result.fail("一人仅仅只能抢一单!");
@@ -71,7 +77,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             //分布式情况下 删除锁有问题：
             // 1.删了别人的 2.删除操作不是原子性的
             // 通过lua脚本 让删除操作变为原子性的
-            lock.unLock();
+            lock.unlock();
+            //lock.unLock();
         }
 
 

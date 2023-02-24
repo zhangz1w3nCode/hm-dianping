@@ -1,4 +1,4 @@
-package com.hmdp.utils.redisLock;
+package com.hmdp.utils.redisUtils.redisLock;
 
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.BooleanUtil;
