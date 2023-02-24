@@ -60,7 +60,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
         boolean isLock = lock.tryLock(1200);
 
-        if(!isLock){
+         if(!isLock){
             return Result.fail("一人仅仅只能抢一单!");
         }
 
@@ -68,6 +68,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();;
             return proxy.creatOrder(voucherId);
         }finally {
+            //分布式情况下 删除锁有问题：
+            // 1.删了别人的 2.删除操作不是原子性的
+            // 通过lua脚本 让删除操作变为原子性的
             lock.unLock();
         }
 
