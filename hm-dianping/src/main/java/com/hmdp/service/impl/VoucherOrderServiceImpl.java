@@ -47,7 +47,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         if(curTime.isBefore(beginTime)){
             return Result.fail("当前时间 早于 活动开始时间 => 活动没开始");
         }
-
         if(curTime.isAfter(endTime)){
             return Result.fail("当前时间 晚于 活动结束时间 => 活动结束");
         }
