@@ -1,25 +1,28 @@
 package com.hmdp.service.impl;
 
 import com.hmdp.dto.Result;
-import com.hmdp.entity.SeckillVoucher;
 import com.hmdp.entity.VoucherOrder;
 import com.hmdp.mapper.VoucherOrderMapper;
 import com.hmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.utils.UserHolder;
 import com.hmdp.utils.redisIdWorker;
-import com.hmdp.utils.redisUtils.redisLock.simpleRedisLock;
-import com.hmdp.utils.redisUtils.redisson.redissonConfig;
+import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import javax.annotation.PostConstruct;
+import java.util.Collections;
+import java.util.concurrent.*;
 
+@Slf4j
 @Service
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder> implements IVoucherOrderService {
 
@@ -35,92 +38,179 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     @Autowired
     private RedissonClient RedissonClient;
 
-    @Override
+    private static final DefaultRedisScript<Long> SECKILL_SCRIPT;
 
-    public Result seckillVoucher(Long voucherId) {
+    static {
+        SECKILL_SCRIPT = new DefaultRedisScript<>();
+        SECKILL_SCRIPT.setLocation(new ClassPathResource("seckill.lua"));
+        SECKILL_SCRIPT.setResultType(Long.class);
+    }
 
-        SeckillVoucher voucher = seckillVoucherService.getById(voucherId);
+    //阻塞队列
+    private BlockingQueue<VoucherOrder> orderTasks = new ArrayBlockingQueue<>(1024*1024);
 
-        LocalDateTime beginTime = voucher.getBeginTime();
-        LocalDateTime endTime = voucher.getEndTime();
-        LocalDateTime curTime = LocalDateTime.now();
-        if(curTime.isBefore(beginTime)){
-            return Result.fail("当前时间 早于 活动开始时间 => 活动没开始");
+    //线程池
+    private static final ExecutorService SECKILL_ORDER_EXECUTOR = Executors.newSingleThreadExecutor();
+
+    @PostConstruct
+    private void init(){
+        SECKILL_ORDER_EXECUTOR.submit(new voucherOrderHandler());
+    }
+
+    private IVoucherOrderService proxy;
+
+    //获取队列订单信息
+    private class voucherOrderHandler implements Runnable{
+        @Override
+        public void run() {
+            while (true){
+                try {
+                    VoucherOrder voucherOrder = orderTasks.take();
+                    handleOrder(voucherOrder);
+                } catch (Exception e) {
+                    log.error("处理订单异常",e);
+                }
+
+            }
         }
-        if(curTime.isAfter(endTime)){
-            return Result.fail("当前时间 晚于 活动结束时间 => 活动结束");
-        }
+    }
 
-        Integer DbStock = voucher.getStock();
-
-        if (DbStock < 1) return Result.fail("优惠券库存不足");
-
-        Long userId = UserHolder.getUser().getId();
-
-        //一人一单 线程安全的做法
-        //simpleRedisLock lock = new simpleRedisLock("voucherOrder:"+userId,redisTemplate);
-
+    private void handleOrder(VoucherOrder voucherOrder) {
+        Long userId = voucherOrder.getUserId();
+        Long voucherId = voucherOrder.getVoucherId();
         //使用redisson框架 实现分布式锁
-        RLock lock = RedissonClient.getLock("voucherOrder:" + userId);
+        RLock lock = RedissonClient.getLock("lock:order:" + userId);
 
         boolean isLock = lock.tryLock();
 
-         if(!isLock){
-            return Result.fail("一人仅仅只能抢一单!");
+        if (!isLock) {
+            log.error("不允许重复下单");
+            return;
         }
 
         try {
-            IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();;
-            return proxy.creatOrder(voucherId);
-        }finally {
+            //创建订单
+            proxy.creatOrder(voucherOrder);
+
+        } finally {
             //分布式情况下 删除锁有问题：
             // 1.删了别人的 2.删除操作不是原子性的
             // 通过lua脚本 让删除操作变为原子性的
             lock.unlock();
             //lock.unLock();
+
         }
+    }
+
+//    @Override
+//    public Result seckillVoucher(Long voucherId) {
+//
+//        SeckillVoucher voucher = seckillVoucherService.getById(voucherId);
+//
+//        LocalDateTime beginTime = voucher.getBeginTime();
+//        LocalDateTime endTime = voucher.getEndTime();
+//        LocalDateTime curTime = LocalDateTime.now();
+//        if(curTime.isBefore(beginTime)){
+//            return Result.fail("当前时间 早于 活动开始时间 => 活动没开始");
+//        }
+//        if(curTime.isAfter(endTime)){
+//            return Result.fail("当前时间 晚于 活动结束时间 => 活动结束");
+//        }
+//
+//        Integer DbStock = voucher.getStock();
+//
+//        if (DbStock < 1) return Result.fail("优惠券库存不足");
+//
+//        Long userId = UserHolder.getUser().getId();
+//
+//        //一人一单 线程安全的做法
+//        //simpleRedisLock lock = new simpleRedisLock("voucherOrder:"+userId,redisTemplate);
+//
+//        //使用redisson框架 实现分布式锁
+//        RLock lock = RedissonClient.getLock("voucherOrder:" + userId);
+//
+//        boolean isLock = lock.tryLock();
+//
+//         if(!isLock){
+//            return Result.fail("一人仅仅只能抢一单!");
+//        }
+//
+//        try {
+//            IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();;
+//            return proxy.creatOrder(voucherId);
+//        }finally {
+//            //分布式情况下 删除锁有问题：
+//            // 1.删了别人的 2.删除操作不是原子性的
+//            // 通过lua脚本 让删除操作变为原子性的
+//            lock.unlock();
+//            //lock.unLock();
+//        }
+//
+//
+//
+//    }
+
+    //notice：优化
+    // 使用redis进行异步下单操作 接口响应497->176 吞吐量1000 -> 1500
+    //基于lua脚本的阻塞队列的异步秒杀
+
+    //
+    @Override
+    public Result seckillVoucher(Long voucherId) {
+
+        //lua脚本 进行用户秒杀资格的判断
+        Long userId = UserHolder.getUser().getId();
+        Long res = redisTemplate.execute(SECKILL_SCRIPT, Collections.emptyList(), voucherId.toString(), userId.toString());
+        int r = res.intValue();
+        if(r!=0){
+            return Result.fail(r==1?"库存不足":"不能重复下单");
+        }
+        //保存到阻塞队列 -> 保存下单信息
+        //封装到对象 订单id 用户id 优惠券id
+
+        VoucherOrder voucherOrder = new VoucherOrder();
+        long orderId = redisIdWorker.nextId("order");
+        voucherOrder.setId(orderId);
+        voucherOrder.setUserId(userId);
+        voucherOrder.setVoucherId(voucherId);
+
+        //创建订单 放入 阻塞队列 后续流程异步执行
+        orderTasks.add(voucherOrder);
+
+        proxy = (IVoucherOrderService) AopContext.currentProxy();
 
 
-
+        return Result.ok(orderId);
     }
 
     @Transactional
     //一人一单 线程安全的做法
-    public Result creatOrder(Long voucherId) {
+    public void creatOrder(VoucherOrder voucherOrder) {
 
-        Long userId = UserHolder.getUser().getId();
+        Long userId = voucherOrder.getUserId();
 
-        Integer orderSum = query().eq("user_id", userId).eq("voucher_id", voucherId).count();
+        Integer orderSum = query().eq("user_id", userId).eq("voucher_id", voucherOrder.getVoucherId()).count();
 
         if(orderSum>0){
-            return Result.fail("购买失败！一人仅限制买一单！");
+            log.error("购买失败！一人仅限制买一单！");
+            return ;
         }
 
 
         boolean status = seckillVoucherService.update()
                 .setSql("stock=stock-1")
-                .eq("voucher_id", voucherId)
+                .eq("voucher_id", voucherOrder.getVoucherId())
                 //使用乐观锁的方式解决超卖问题
                 //.eq("stock", voucher.getStock())
                 .gt("stock", 0)
                 .update();
 
-        if (!status) return Result.fail("更新失败！");
+        if (!status){
+            log.error("更新失败！");
+            return;
+        }
 
-
-        VoucherOrder voucherOrder = new VoucherOrder();
-
-        long orderId = redisIdWorker.nextId("order");
-        voucherOrder.setId(orderId);
-
-
-        voucherOrder.setUserId(userId);
-
-        voucherOrder.setVoucherId(voucherId);
 
         save(voucherOrder);
-
-
-        return Result.ok(orderId);
     }
 }

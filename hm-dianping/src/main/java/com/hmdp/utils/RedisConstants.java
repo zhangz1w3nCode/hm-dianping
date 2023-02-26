@@ -28,4 +28,6 @@ public class RedisConstants {
     public static final long BEIGIN_TIMESTAMP = 1677024000L;
     public static final String UNIQUE_ID = "icr:";
     public static final int COUNT_BITS = 32;
+
+
 }
