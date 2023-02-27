@@ -21,7 +21,7 @@ public class tokenUtils {
         //过期时间
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(new Date());
-        calendar.add(Calendar.MINUTE,1);
+        calendar.add(Calendar.MINUTE,100);
 
         return JWT.create().withKeyId(userId)
                            .withIssuer(issurer)

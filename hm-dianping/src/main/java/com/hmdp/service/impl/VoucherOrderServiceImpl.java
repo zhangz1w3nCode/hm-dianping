@@ -63,8 +63,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 
     private IVoucherOrderService proxy;
-
-    //notice
+    //优化
     // 使用redisStream消息队列优化
     // 性能指标:    没优化  -> 线程池➕阻塞队列 -> redisStream消息队列
     // 接口响应:     497   ->      176      ->       110
@@ -236,7 +235,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 //
 //    }
 
-    //notice：优化
+    //优化
     // 使用redis进行异步下单操作 接口响应497->176 吞吐量1000 -> 1500
     // 基于lua脚本的阻塞队列的异步秒杀
 

@@ -17,6 +17,8 @@ import java.util.UUID;
 @RequestMapping("upload")
 public class UploadController {
 
+
+    //图片的上传 上传到nginx静态文件中
     @PostMapping("blog")
     public Result uploadImage(@RequestParam("file") MultipartFile image) {
         try {
@@ -24,7 +26,7 @@ public class UploadController {
             String originalFilename = image.getOriginalFilename();
             // 生成新文件名
             String fileName = createNewFileName(originalFilename);
-            // 保存文件
+            // 保存文件到个人到nginx目录
             image.transferTo(new File(SystemConstants.IMAGE_UPLOAD_DIR, fileName));
             // 返回结果
             log.debug("文件上传成功，{}", fileName);
