@@ -52,9 +52,9 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         Long blogId = blog.getId();
 
         String key = RedisConstants.BLOG_LIKED_KEY+blogId;
-        Boolean isLike = redisTemplate.opsForSet().isMember(key, userId.toString());
+        Double score = redisTemplate.opsForZSet().score(key, userId.toString());
 
-        blog.setIsLike(BooleanUtil.isTrue(isLike));
+        blog.setIsLike(score!=null);
     }
 
 
@@ -93,22 +93,24 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
         //存入redis  key = BLOG_LIKED_KEY+blogId  value = userId
         String key = RedisConstants.BLOG_LIKED_KEY+blogId;
-        Boolean isLike = redisTemplate.opsForSet().isMember(key, userId.toString());
+        Double score = redisTemplate.opsForZSet().score(key, userId.toString());
 
-        if(BooleanUtil.isFalse(isLike)){
+        if(score==null){
             //没被点赞
             boolean isSuccess = update().setSql("liked = liked+1").eq("id", blogId).update();
 
-            //存入redis
+            //存入redis zset
             if(isSuccess){
-                redisTemplate.opsForSet().add(key,userId.toString());
+                // zadd key value score
+                // 分数是时间戳 按时间戳排序
+                redisTemplate.opsForZSet().add(key,userId.toString(),System.currentTimeMillis());
             }
 
 
         }else{
             boolean isSuccess = update().setSql("liked = liked-1").eq("id", blogId).update();
 
-            redisTemplate.opsForSet().remove(key,userId.toString());
+            redisTemplate.opsForZSet().remove(key,userId.toString());
 
         }
 
