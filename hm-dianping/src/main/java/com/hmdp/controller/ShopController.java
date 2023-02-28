@@ -30,11 +30,7 @@ public class ShopController {
 
     }
 
-    /**
-     * 新增商铺信息
-     * @param shop 商铺数据
-     * @return 商铺id
-     */
+
     @PostMapping
     public Result saveShop(@RequestBody Shop shop) {
         // 写入数据库
@@ -54,9 +50,7 @@ public class ShopController {
         return shopService.update(shop);
     }
 
-    /**
-     * 根据商铺类型分页查询商铺信息
-     */
+    //功能:
     @GetMapping("/of/type")
     public Result queryShopByType(
             @RequestParam("typeId") Integer typeId,
