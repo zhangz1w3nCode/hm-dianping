@@ -57,6 +57,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         if(userDTO==null){
             return;
         }
+
         Long userId = UserHolder.getUser().getId();
         Long blogId = blog.getId();
 
