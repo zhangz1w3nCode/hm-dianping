@@ -30,7 +30,6 @@ public class FollowController {
     public Result isFollow(@PathVariable("id") Long id){
         return followService.isFollow(id);
     }
-
     //功能: 共同关注
     //问题: 普通方式去db中查找对应关注集合列表 再取交集太耗性能
     //解决: 使用redis的set集合取交集 速度非常快
