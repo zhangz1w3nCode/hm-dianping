@@ -82,7 +82,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         blog.setIcon(user.getIcon());
     }
 
-    //功能: 查询当前的热帖子
+    //功能: 分页查询当前的热帖子
     //问题:
     //解决:
     @Override
