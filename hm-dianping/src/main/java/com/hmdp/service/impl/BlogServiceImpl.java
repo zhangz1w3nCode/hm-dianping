@@ -35,6 +35,10 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     @Autowired
     private StringRedisTemplate redisTemplate;
 
+
+    //功能: 通过博客id 去找对应的博客的博主 再通过用户id得到用户信息 最后包装返回
+    //问题:
+    //解决:
     @Override
     public Result queryBlogById(Long id) {
         Blog blog = getById(id);
@@ -67,8 +71,10 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         blog.setIsLike(score!=null);
     }
 
-
-    //通过blog中的用户id 去用户表中查找 用户信息 存入blog的冗余字段中
+    //功能:提取的一个方法:
+    //    通过blog中的用户id 去用户表中查找 用户信息 存入blog的冗余字段中
+    //问题:
+    //解决:
     private void queryUserByBlog(Blog blog) {
         Long userId = blog.getUserId();
         User user = userService.getById(userId);
@@ -76,6 +82,9 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         blog.setIcon(user.getIcon());
     }
 
+    //功能: 查询当前的热帖子
+    //问题:
+    //解决:
     @Override
     public Result queryHotBlog(Integer current) {
         // 根据用户查询
@@ -94,7 +103,9 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     }
 
 
-    //功能:点赞方法
+    //功能:点赞博客 使用redis的zset集合
+    //问题:
+    //解决:
     @Override
     public Object likeBlog(Long blogId) {
 
