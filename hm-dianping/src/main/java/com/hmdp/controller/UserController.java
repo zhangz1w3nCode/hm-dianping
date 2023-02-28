@@ -177,7 +177,6 @@ public class UserController {
 
 
     // 给你一个十进制数字 得出其二进制数字的连续1的个数
-
     private static int getCnt(Long num) {
 
         int cnt=0;
