@@ -22,6 +22,8 @@ public class RedisConstants {
     public static final String BLOG_LIKED_KEY = "blog:liked:";
 
     public static final String FOLLOW_USER = "follow:user:id:";
+    public static final String FEED_USER = "feed:user:id:";
+
 
 
     public static final String FEED_KEY = "feed:";

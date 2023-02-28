@@ -15,11 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import java.util.List;
 
-/**
- *
- * 发布探店笔记
- *
- */
+//接口: 发布博文-笔记
 @RestController
 @RequestMapping("/blog")
 public class BlogController {
@@ -29,13 +25,9 @@ public class BlogController {
 
     @PostMapping
     public Result saveBlog(@RequestBody Blog blog) {
-        // 获取登录用户
-        UserDTO user = UserHolder.getUser();
-        blog.setUserId(user.getId());
-        // 保存探店博文
-        blogService.save(blog);
+
         // 返回id
-        return Result.ok(blog.getId());
+        return blogService.saveBlog(blog);
     }
 
     //功能: 点赞功能
@@ -94,5 +86,18 @@ public class BlogController {
     public Result queryHotBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
 
         return blogService.queryHotBlog(current);
+    }
+
+
+    //功能: 滚动分页查询实现推送流
+    //问题: 普通方式去db中查找对应关注集合列表 再取交集太耗性能
+    //解决: 使用redis的set集合取交集 速度非常快
+    @GetMapping("/of/follow")
+    public Result queryBlogOfFollow(
+            @RequestParam("lastId") Long max
+            ,@RequestParam(value = "offset",defaultValue = "0") Integer offset
+    ){
+
+        return blogService.queryBlogOfFollow(max,offset);
     }
 }
