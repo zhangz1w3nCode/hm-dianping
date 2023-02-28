@@ -23,6 +23,8 @@ public class BlogController {
     @Resource
     private IBlogService blogService;
 
+
+    //功能: 保存一个博客到数据库
     @PostMapping
     public Result saveBlog(@RequestBody Blog blog) {
 
@@ -50,12 +52,16 @@ public class BlogController {
         return Result.ok(blogService.queryBlogLikes(id));
     }
 
+
+    //功能：根据博客id 去查找博主发布的笔记
     @GetMapping("/{id}")
     public Result queryBlogById(@PathVariable("id") Long blogId) {
 
         return blogService.queryBlogById(blogId);
     }
 
+
+    //功能：查找我发布的笔记
     @GetMapping("/of/me")
     public Result queryMyBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
         // 获取登录用户
@@ -67,6 +73,7 @@ public class BlogController {
         List<Blog> records = page.getRecords();
         return Result.ok(records);
     }
+
 
     //功能：根据博主id 去查找博主发布的笔记
     @GetMapping("/of/user")
@@ -82,6 +89,7 @@ public class BlogController {
         return Result.ok(records);
     }
 
+    //功能：根据like数 做一个排行榜
     @GetMapping("/hot")
     public Result queryHotBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
 
