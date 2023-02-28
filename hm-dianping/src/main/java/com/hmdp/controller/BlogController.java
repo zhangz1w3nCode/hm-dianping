@@ -48,6 +48,16 @@ public class BlogController {
         return Result.ok(blogService.likeBlog(id));
     }
 
+    //功能: 获取点赞过 笔记的人
+    //问题: 接口防刷
+    //解决: 判断用户是否赞过 -redis存储用户是否点赞和点赞数量
+    @GetMapping("/likes/{id}")
+    public Result queryBlogLikes(@PathVariable("id") Long id) {
+        // 修改点赞数量
+
+        return Result.ok(blogService.queryBlogLikes(id));
+    }
+
     @GetMapping("/{id}")
     public Result queryBlogById(@PathVariable("id") Long blogId) {
 
