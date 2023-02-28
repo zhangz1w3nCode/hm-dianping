@@ -1,7 +1,6 @@
 package com.hmdp.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.util.BooleanUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hmdp.dto.Result;
 import com.hmdp.dto.UserDTO;
@@ -129,7 +128,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
 
         }else{
-            boolean isSuccess = update().setSql("liked = liked-1").eq("id", blogId).update();
+            update().setSql("liked = liked-1").eq("id", blogId).update();
 
             redisTemplate.opsForZSet().remove(key,userId.toString());
 

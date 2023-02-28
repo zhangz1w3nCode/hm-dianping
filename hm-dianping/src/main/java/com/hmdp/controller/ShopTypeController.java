@@ -10,8 +10,6 @@ import javax.annotation.Resource;
 import java.util.List;
 
 /**
- *Todo:
- * 作业 使用redis去改造 '商店类型' 接口
  */
 @RestController
 @RequestMapping("/shop-type")
